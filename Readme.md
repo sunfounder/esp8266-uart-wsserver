@@ -31,7 +31,7 @@ SET+MODE1
 `SET+START`: set Connect, return IP if connected
 
 ```
-SET+CONNECT
+SET+START
 ```
 
 ## Data
