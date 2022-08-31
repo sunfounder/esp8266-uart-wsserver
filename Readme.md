@@ -22,7 +22,7 @@ SET+PSKsunfounder
 SET+PORT8765
 ```
 
-`SET+MODE<mode>`: set Wi-Fi Mode, STA = 1, AP = 1
+`SET+MODE<mode>`: set Wi-Fi Mode, STA = 1, AP = 2
 
 ```
 SET+MODE1
