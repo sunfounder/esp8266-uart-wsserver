@@ -67,18 +67,11 @@ void setup() {
 }
 
 void loop() {
-  // time_count = millis();
   builtin_led_status_handler();
-  // Serial.print("led_ut:");Serial.println(millis() - time_count);
 
-  // time_count = millis();
   serialRead();
-  // Serial.print("rxS_ut:");Serial.println(millis() - time_count);
 
-  // time_count = millis();
   if (rx_complete == true) {
-// Serial.print("rx:");Serial.println(rxBuf);
-// delay(100);
 #ifdef DEBUG
     Serial.print("[DEBUG] RX Receive: ");
     Serial.println(rxBuf);
@@ -96,14 +89,10 @@ void loop() {
     rxBuf = "";
     rx_complete = false;
   }
-  // Serial.print("rxH_ut:");Serial.println(millis() - time_count);
 
-  // time_count = millis();
   if (isConnected) {
     webSocket.loop();
   }
-  // Serial.print("wsL_ut:");Serial.println(millis() - time_count);
-
   delay(10);
 }
 
@@ -273,9 +262,6 @@ void handleGet(String cmd) {
 }
 
 String intToString(uint8_t* value, size_t length) {
-  // #ifdef DEBUG
-  // Serial.println("[DEBUG] intToString");
-  // #endif
   String buf;
   for (int i = 0; i < length; i++) {
     buf += (char)value[i];
@@ -312,25 +298,15 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload,
       LED_STATUS_CONNECTED();
       Serial.print("[CONNECTED] ");
       Serial.println(remoteIp.toString());
-      // out = serialReadBlock();
-      // webSocket.sendTXT(client_num, out);
       break;
     }
     case WStype_TEXT: {
-      // #ifdef DEBUG
-      // Serial.printf("[DEBUG] [%u] Received text: ", client_num);
-      // #endif
       out = intToString(payload, length);
 #ifdef DEBUG
       Serial.print("[DEBUG] [WS] Received text: ");
       Serial.println(out);
 #endif
       Serial.println(out);
-      // out = serialReadBlock();
-      // #ifdef DEBUG
-      // Serial.print("[DEBUG] Read from Serial: ");Serial.println(out);
-      // #endif
-      // webSocket.sendTXT(client_num, out);
       break;
     }
     // For everything else: do nothing
