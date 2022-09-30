@@ -12,10 +12,16 @@ Ai-Thinker's various ESP8266 module specifications summary:
     https://docs.ai-thinker.com/en/%E8%A7%84%E6%A0%BC%E4%B9%A6
 
 ## Usage
-### 1. Pico to act as a USB-ART converter
+### 1. Download files
+- Download https://github.com/sunfounder/esp8266-uart-wsserver/archive/refs/heads/main.zip
+- or use git clone
+  ```bash
+    git clone https://github.com/sunfounder/esp8266-uart-wsserver.git
+  ```
+### 2. Pico to act as a USB-ART converter
 - Long press the "BOOTSEL" button on the pico and connect the PC with the USB cable, copy the "picoprobe.uf2" file into the root directory of the pico memory, the pico will automatically install the uf2 file, which will make the GPIO4(TX1), GPIO5(RX1) of the pico become the USB-UART converter.
 
-### 2. Connect esp8266 and pico
+### 3. Connect esp8266 and pico
 - If you are using Pico-4WD, you can skip this step.
 - Wiring according to the following table:
    | esp8266 |   pico  |
@@ -32,11 +38,11 @@ Ai-Thinker's various ESP8266 module specifications summary:
    <img src="./pinout/ESP-12S_pinout.jpg" width="250" height="200" align="left-center" title="ESP-12S_pinout"/>
    <img src="./pinout/ESP-01S_pinout.jpg" width="250" height="200" align="right-center" title="ESP-01S_pinout" />
 
-### 3. Reset esp8266 and enter download mode
+### 4. Reset esp8266 and enter download mode
 - IO0 connect to GND, connect RST to GND and then hang after, esp8266 will enter download mode, generally esp8266 will flash quickly for a while.
 - For pico-4wd, you need to use a duplex cable to connect GND and IO0, then turn on the power,make the esp8266 enter the download mode, after that you can release IO0.
 
-### 4. Execute install.bat
+### 5. Execute install.bat
 - Double click to execute the install.bat file, the program will automatically search the serial port and try to download esp8266-uart-wsserver firmware, if it fails, please reset the esp8266 and re-execute the install.bat.
 
 ## Links about SunFounder 
