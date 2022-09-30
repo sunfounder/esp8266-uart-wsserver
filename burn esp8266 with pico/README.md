@@ -6,7 +6,7 @@ Pico UART-USB bridge picoprobe:
     https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html#debugging-using-another-raspberry-pi-pico
 
 esp8266-uart-wsserver firmware:
-    https://github.com/sunfounder/esp8266-uart-wsserver/releases
+    https://github.com/sunfounder/esp8266-uart-wsserver
 
 Ai-Thinker's various ESP8266 module specifications summary:
     https://docs.ai-thinker.com/en/%E8%A7%84%E6%A0%BC%E4%B9%A6
