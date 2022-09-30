@@ -28,8 +28,9 @@ Ai-Thinker's various ESP8266 module specifications summary:
    | IO      | GND     |
 
    ![pico_pinout](./pinout/pico-pinout.svg#pic_center "pico_pinout")
-   <img src="./pinout/ESP-12S_pinout.jpg" alt="图片替换文本" width="250" height="200" align="bottom" />
-   <img src="./pinout/ESP-01S_pinout.jpg" alt="图片替换文本" width="250" height="200" align="right" />
+   
+   <img src="./pinout/ESP-12S_pinout.jpg" alt="图片替换文本" width="250" height="200" align="left-center" />
+   <img src="./pinout/ESP-01S_pinout.jpg" alt="图片替换文本" width="250" height="200" align="right-center" />
 
 ### 3. Reset esp8266 and enter download mode
 - IO0 connect to GND, connect RST to GND and then hang after, esp8266 will enter download mode, generally esp8266 will flash quickly for a while.
