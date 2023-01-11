@@ -2,6 +2,7 @@
 #include <ESP8266WiFi.h>
 #include <WebSocketsServer.h>
 
+#define VERSION "1.1.0"
 // for production, uncomment this line
 // #define DEBUG
 
@@ -63,7 +64,7 @@ void setup() {
 #ifdef DEBUG
   Serial.println("[DEBUG] Start!");
 #endif
-  Serial.println("\r\n[OK]");
+  Serial.println("\r\n[OK] "VERSION);
 }
 
 void loop() {
@@ -158,7 +159,7 @@ bool connectWiFi() {
   Serial.print("[DEBUG] IP address: ");
   Serial.println(ip);
 #endif
-
+  Serial.print("PORT:");Serial.println(port);
   isConnected = true;
   webSocket = WebSocketsServer(port);
   webSocket.begin();
