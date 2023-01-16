@@ -1,29 +1,45 @@
-#include <ArduinoJson.h>
-#include <ESP8266WiFi.h>
-#include <WebSocketsServer.h>
+/*******************************************************************
+  This is a firmware read convert uart command and create a websocket
+  server. It's originally for Arduino or Raspberry Pi Pico to connect
+  to SunFounder Controller. Send command and data over UART in
+  boardrate 115200.
 
-#define VERSION "1.1.0"
-// for production, uncomment this line
-// #define DEBUG
+  Dependent libraries:
+    - ArduinoJson
+    - WebSockets
 
-#define BUILTIN_LED1 2  // BUILTIN_LED GPIO2
-#define LED_OFF 0
-#define LED_ON 1
-#define LED_SLOW_BLINK 2
-#define LED_FAST_BLINK 3
-#define SLOW_BLINK_DELAY 500  // uint ms
-#define FAST_BLINK_DELAY 100
+  Board tools:
+    - Generic ESP8266 Module
 
-#define LED_STATUS_DISCONNECTED() builtin_led_slow_blink()
-#define LED_STATUS_CONNECTED() builtin_led_on()
-#define LED_STATUS_ERROOR() builtin_led_fast_blink()
+  Version: 1.2.0
+    -- https://github.com/sunfounder/esp8266-uart-wsserver.git
 
-bool builtin_led_enable = true;  // Whether to enable LED
-double led_startMillis = 0;      // LED state start time
-uint8_t builtin_led_status = LED_OFF;
-bool led_status_flag = false;
+  Author: Sunfounder
+  Website: http://www.sunfounder.com
+           https://docs.sunfounder.com
+ *******************************************************************/
 
-#define SERIAL_TIMEOUT 100  // 100ms
+#include <Arduino.h>
+#include "led.hpp"
+#include "wifi_helper.hpp"
+#include "ws_server.hpp"
+
+#define VERSION "1.2.0"
+
+/* Set the Debug Level
+  for production, set "DEBUG_LEVEL" to "CAM_DEBUG_LEVEL_INFO"
+*/
+#define DEBUG_LEVEL CAM_DEBUG_LEVEL_INFO
+// #define DEBUG_LEVEL CAM_DEBUG_LEVEL_DEBUG
+#define CAM_DEBUG_LEVEL_OFF 0
+#define CAM_DEBUG_LEVEL_ERROR 1
+#define CAM_DEBUG_LEVEL_INFO 2
+#define CAM_DEBUG_LEVEL_DEBUG 3
+#define CAM_DEBUG_LEVEL_ALL 4
+
+extern bool builtin_led_enable;
+
+#define SERIAL_TIMEOUT 100  // timeout 100ms
 String rxBuf = "";
 bool rx_complete = false;
 
@@ -32,205 +48,111 @@ bool rx_complete = false;
 #define STA 1
 #define AP 2
 
+WS_Server ws_server = WS_Server();
+WiFiHelper wifi = WiFiHelper();
+
+String WIFI_MODES[3] = {"None", "STA", "AP"};
+
 // internal Variables
 String ssid = "";
 String password = "";
 int port = 0;
 int mode = NONE;
+uint8_t ws_send_mode = 0;
 
 bool isConnected = false;
 String ip = "";
-uint8_t client_num = 0;
-double time_count = 0;
 
-WebSocketsServer webSocket = WebSocketsServer(8765);
+void debug(String msg);
+void debug(String msg, String data);
+void error(String msg);
 
-bool wifiClient();
-bool wifiAP();
-bool connectWiFi();
+String serialRead();
+void serial_received_handler();
 void handleSet(String cmd);
-void handleGet(String cmd);
-String intToString(uint8_t* value, size_t length);
-void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload,
-                      size_t length);
-void builtin_led_init();
-void serialRead();
+void start();
 
+/*--------------------- setup() & loop() ------------------------------*/
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(SERIAL_TIMEOUT);
   builtin_led_init();
   LED_STATUS_DISCONNECTED();
-#ifdef DEBUG
-  Serial.println("[DEBUG] Start!");
-#endif
+  debug("Start !", " ");
   Serial.println("\r\n[OK] "VERSION);
 }
 
 void loop() {
   builtin_led_status_handler();
+  if (wifi.is_connected) {
+    ws_server.loop();
+  }
+  serial_received_handler();
 
-  serialRead();
+  delay(10);
+}
 
-  if (rx_complete == true) {
-#ifdef DEBUG
-    Serial.print("[DEBUG] RX Receive: ");
-    Serial.println(rxBuf);
-#endif
+/*--------------------------------------------------------------------*/
+
+void serial_received_handler() {
+  // serial receive
+  rxBuf = serialRead();
+  if (rxBuf.length() > 0) {
+    debug("RX Receive: ", rxBuf);
     if (rxBuf.substring(0, 4) == "SET+") {
       handleSet(rxBuf.substring(4));
     } else if (rxBuf.substring(0, 3) == "WS+") {
       String out = rxBuf.substring(3);
-#ifdef DEBUG
-      Serial.print("[DEBUG] Read from Serial: ");
-      Serial.println(out);
-#endif
-      webSocket.sendTXT(client_num, out);
-    }
-    rxBuf = "";
-    rx_complete = false;
-  }
-
-  if (isConnected) {
-    webSocket.loop();
-  }
-  delay(10);
-}
-
-bool wifiClient() {
-  // Connect to wifi
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-
-  // Wait some time to connect to wifi
-  int count = 0;
-#ifdef DEBUG
-  Serial.print("[DEBUG] Connecting.");
-#endif
-  while (WiFi.status() != WL_CONNECTED) {
-#ifdef DEBUG
-    Serial.print(".");
-#endif
-    delay(500);
-    count++;
-    if (count > 30) {
-#ifdef DEBUG
-      Serial.println("");
-#endif
-      return false;
+      ws_server.send(out);
     }
   }
-#ifdef DEBUG
-  Serial.println("");
-#endif
-  ip = WiFi.localIP().toString();
-  return true;
 }
 
-bool wifiAP() {
-  WiFi.softAP(ssid, password);
-  ip = WiFi.softAPIP().toString();
-  return true;
-}
-
-bool connectWiFi() {
-  bool ret;
-
-#ifdef DEBUG
-  Serial.print("[DEBUG] Mode:");
-#endif
-  if (mode == AP) {
-#ifdef DEBUG
-    Serial.println("AP");
-#endif
-    ret = wifiAP();
-  } else if (mode == STA) {
-#ifdef DEBUG
-    Serial.println("STA");
-#endif
-    ret = wifiClient();
-  }
-
-  if (!ret) {
-    return false;
-  }
-
-#ifdef DEBUG
-  Serial.print("[DEBUG] IP address: ");
-  Serial.println(ip);
-#endif
-  Serial.print("PORT:");Serial.println(port);
-  isConnected = true;
-  webSocket = WebSocketsServer(port);
-  webSocket.begin();
-  webSocket.onEvent(onWebSocketEvent);
-#ifdef DEBUG
-  Serial.println("[DEBUG] Websocket on!");
-#endif
-  return true;
-}
-
-void serialRead() {
+String serialRead() {
+  String buf = "";
   char inChar;
-  while (Serial.available()) {
+  unsigned long timeoutStart = millis();
+  while (Serial.available() || millis() - timeoutStart < SERIAL_TIMEOUT) {
     inChar = (char)Serial.read();
     if (inChar == '\n') {
-      rx_complete = true;
       break;
+    } else if (inChar == '\r') {
+      continue;
     } else if ((int)inChar != 255) {
-      rxBuf += inChar;
+      buf += inChar;
     }
   }
+  return buf;
 }
 
 void handleSet(String cmd) {
   if (cmd.substring(0, 4) == "SSID") {
     ssid = cmd.substring(4);
-#ifdef DEBUG
-    Serial.print("[DEBUG] Set SSID: ");
-    Serial.println(ssid);
-#endif
+    debug("Set SSID: ", ssid);
     Serial.println("[OK]");
   } else if (cmd.substring(0, 3) == "PSK") {
     password = cmd.substring(3);
-#ifdef DEBUG
-    Serial.print("[DEBUG] Set password: ");
-    Serial.println(password);
-#endif
+    debug("Set password: ", password);
     Serial.println("[OK]");
   } else if (cmd.substring(0, 4) == "PORT") {
     port = cmd.substring(4).toInt();
-#ifdef DEBUG
-    Serial.print("[DEBUG] Set port: ");
-    Serial.println(port);
-#endif
+    debug("Set port: ", String(port));
     Serial.println("[OK]");
   } else if (cmd.substring(0, 4) == "MODE") {
     mode = cmd.substring(4).toInt();
-#ifdef DEBUG
-    Serial.print("[DEBUG] Set mode: ");
-    if (mode == AP) {
-      Serial.println("AP");
-    } else if (mode == STA) {
-      Serial.println("STA");
-    }
-#endif
+    debug("Set mode: ", WIFI_MODES[mode]);
     Serial.println("[OK]");
   } else if (cmd.substring(0, 3) == "LED") {
     builtin_led_enable = cmd.substring(3).toInt();
-#ifdef DEBUG
-    Serial.print("[DEBUG] Set LED: ");
-    if (builtin_led_enable == 0) {
-      Serial.println("disable");
-    } else if (builtin_led_enable == 1) {
-      Serial.println("enable");
-    }
-#endif
+    debug("Set mode: ", String(builtin_led_enable));
+    Serial.println("[OK]");
+  } else if (cmd.substring(0, 3) == "SMD") {
+    ws_send_mode = cmd.substring(3).toInt();
+    ws_server.set_send_mode(ws_send_mode);
+    debug("Set ws_send_mode: ", String(ws_send_mode));
     Serial.println("[OK]");
   } else if (cmd.substring(0, 5) == "RESET") {
-#ifdef DEBUG
-    Serial.println("[DEBUG] Reset");
-#endif
+    debug("Reset", " ");
     delay(10);
     ESP.reset();
   } else if (cmd.substring(0, 5) == "START") {
@@ -243,171 +165,57 @@ void handleSet(String cmd) {
     } else if (port == 0) {
       Serial.println("[ERROR] Please set port");
     } else {
-      bool result = connectWiFi();
-      if (!result) {
-        Serial.println("[ERROR] TIMEOUT");
-      } else {
-        Serial.print("[OK] ");
-        Serial.println(ip);
-      }
-    }
-  }
-}
-
-void handleGet(String cmd) {
-  if (cmd.substring(0, 4) == "IP") {
-    Serial.println(ip);
-  } else if (cmd.substring(0, 6) == "STATUS") {
-    Serial.println(WiFi.status() != WL_CONNECTED);
-  }
-}
-
-String intToString(uint8_t* value, size_t length) {
-  String buf;
-  for (int i = 0; i < length; i++) {
-    buf += (char)value[i];
-  }
-  return buf;
-}
-
-void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload,
-                      size_t length) {
-  String out;
-  client_num = cn;
-#ifdef DEBUG
-  Serial.println("[DEBUG] onWebSocketEvent");
-#endif
-  switch (type) {
-    // Client has disconnected
-    case WStype_DISCONNECTED: {
-#ifdef DEBUG
-      Serial.println("[DEBUG] [WS] Disconnected!");
-#endif
-      IPAddress remoteIp = webSocket.remoteIP(client_num);
-      LED_STATUS_DISCONNECTED();
-      Serial.print("[DISCONNECTED] ");
-      Serial.println(remoteIp.toString());
-      break;
-    }
-    // New client has connected
-    case WStype_CONNECTED: {
-      IPAddress remoteIp = webSocket.remoteIP(client_num);
-#ifdef DEBUG
-      Serial.print("[DEBUG] [WS] Connection from ");
-      Serial.println(remoteIp.toString());
-#endif
-      LED_STATUS_CONNECTED();
-      Serial.print("[CONNECTED] ");
-      Serial.println(remoteIp.toString());
-      break;
-    }
-    case WStype_TEXT: {
-      out = intToString(payload, length);
-#ifdef DEBUG
-      Serial.print("[DEBUG] [WS] Received text: ");
-      Serial.println(out);
-#endif
-      Serial.println(out);
-      break;
-    }
-    // For everything else: do nothing
-    case WStype_BIN: {
-#ifdef DEBUG
-      Serial.println("[DEBUG] [WS] WStype_BIN");
-#endif
-      break;
-    }
-    case WStype_ERROR: {
-      LED_STATUS_ERROOR();
-#ifdef DEBUG
-      Serial.println("[DEBUG] [WS] WStype_ERROR");
-#endif
-      break;
-    }
-    case WStype_FRAGMENT_TEXT_START: {
-#ifdef DEBUG
-      Serial.println("[DEBUG] [WS] WStype_FRAGMENT_TEXT_START");
-#endif
-      break;
-    }
-    case WStype_FRAGMENT_BIN_START: {
-#ifdef DEBUG
-      Serial.println("[DEBUG] [WS] WStype_FRAGMENT_BIN_START");
-#endif
-      break;
-    }
-    case WStype_FRAGMENT: {
-#ifdef DEBUG
-      Serial.println("[DEBUG] [WS] WStype_FRAGMENT");
-#endif
-      break;
-    }
-    case WStype_FRAGMENT_FIN: {
-#ifdef DEBUG
-      Serial.println("[DEBUG] [WS] WStype_FRAGMENT_FIN");
-#endif
-      break;
-    }
-    case WStype_PING: {
-#ifdef DEBUG
-      Serial.println("[DEBUG] [WS] WStype_PING");
-#endif
-      break;
-    }
-    case WStype_PONG: {
-#ifdef DEBUG
-      Serial.println("[DEBUG] [WS] WStype_PONG");
-#endif
-      break;
-    }
-    default: {
-#ifdef DEBUG
-      Serial.print("[DEBUG] [WS] Event Type: [");
-      Serial.print(type);
-      Serial.println("]");
-#endif
-      break;
-    }
-  }
-}
-
-void builtin_led_init() {
-  pinMode(BUILTIN_LED1, OUTPUT);     // Set LED pin as output
-  digitalWrite(BUILTIN_LED1, HIGH);  // 1:turn off LED
-}
-
-void builtin_led_off() { builtin_led_status = LED_OFF; }
-
-void builtin_led_on() { builtin_led_status = LED_ON; }
-
-void builtin_led_slow_blink() { builtin_led_status = LED_SLOW_BLINK; }
-
-void builtin_led_fast_blink() { builtin_led_status = LED_FAST_BLINK; }
-
-void builtin_led_status_handler() {
-  if (builtin_led_enable) {
-    switch (builtin_led_status) {
-      case LED_OFF:
-        digitalWrite(BUILTIN_LED1, HIGH);
-        break;
-      case LED_ON:
-        digitalWrite(BUILTIN_LED1, LOW);
-        break;
-      case LED_SLOW_BLINK:
-        if (millis() - led_startMillis > SLOW_BLINK_DELAY) {
-          led_startMillis = millis();
-          led_status_flag = !led_status_flag;
-          digitalWrite(BUILTIN_LED1, led_status_flag);  // slow blink
-        }
-        break;
-      case LED_FAST_BLINK:
-        if (millis() - led_startMillis > FAST_BLINK_DELAY) {
-          led_startMillis = millis();
-          led_status_flag = !led_status_flag;
-          digitalWrite(BUILTIN_LED1, led_status_flag);  // fast blink
-        }
+      start();
     }
   } else {
-    digitalWrite(BUILTIN_LED1, HIGH);
+    Serial.println("SET+ Unknown command");
   }
+}
+
+void start() {
+  LED_STATUS_ERROOR();
+  if (ssid.length() == 0) {
+    error("Please set ssid");
+  } else if (password.length() == 0) {
+    error("Please set password");
+  } else if (mode == NONE) {
+    error("Please set mode");
+  } else if (port == 0) {
+    error("Please set port");
+  } else{
+    bool result = wifi.connect(mode, ssid, password);
+    if (!result) {
+      error("TIMEOUT");
+      LED_STATUS_ERROOR();
+    } else {
+      LED_STATUS_DISCONNECTED();
+      ws_server.begin(port);
+      debug("Websocket on!");
+      Serial.print("[OK] ");Serial.println(wifi.ip);
+    }
+  }
+}
+
+/*---------------------------- debug print ---------------------------------*/
+
+void debug(String msg) {
+  #if (DEBUG_LEVEL >= CAM_DEBUG_LEVEL_DEBUG)
+    Serial.print(F("[ESP01_D] "));
+    Serial.println(msg);
+  #endif
+}
+
+void debug(String msg, String data) {
+  #if (DEBUG_LEVEL >= CAM_DEBUG_LEVEL_DEBUG)
+    Serial.print(F("[ESP01_D] "));
+    Serial.print(msg);
+    Serial.println(data);
+  #endif
+}
+
+void error(String msg) {
+  #if (DEBUG_LEVEL >= CAM_DEBUG_LEVEL_ERROR)
+    Serial.print(F("[ESP01_E] "));
+    Serial.println(msg);
+  #endif
 }
