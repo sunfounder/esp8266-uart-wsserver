@@ -2,6 +2,12 @@
 
 This is a firmware read convert uart command and create a websocket server. It's originally for Arduino or Raspberry Pi Pico to connect to SunFounder Controller. Send command and data over UART in boardrate 115200
 
+## Libraries
+- WebSockets
+    - https://www.arduinolibraries.info/libraries/web-sockets
+    - https://github.com/Links2004/arduinoWebSockets
+- ArduinoJson
+    - https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
 ## Commands
 
 `SET+SSID<ssid>`: set Wi-Fi SSID
@@ -34,6 +40,11 @@ SET+MODE1
 SET+START
 ```
 
+`SET+SMD<mode>`: set send mode, 0:send original text; 1:send simplified text
+`SET+RESET`: reset esp8266
+```
+SET+RESET
+```
 ## Data
 
 `WS+<data>`: send data over websocket
@@ -106,4 +117,4 @@ SET+START
 
 ## Changelog
 
-- v1.0.1 2021-12-23: tide code, add timeout for serial read
+ https://github.com/sunfounder/esp8266-uart-wsserver/blob/main/CHANGELOG.md
