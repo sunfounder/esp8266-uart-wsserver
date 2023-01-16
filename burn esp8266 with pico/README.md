@@ -34,7 +34,7 @@ Ai-Thinker's various ESP8266 module specifications summary:
    | IO      | GND     |
 
    ![pico_pinout](./pinout/pico-pinout.svg#pic_center "pico_pinout")
-   
+
    <img src="./pinout/ESP-12S_pinout.jpg" width="250" height="200" align="left-center" title="ESP-12S_pinout"/>
    <img src="./pinout/ESP-01S_pinout.jpg" width="250" height="200" align="right-center" title="ESP-01S_pinout" />
 
@@ -45,7 +45,7 @@ Ai-Thinker's various ESP8266 module specifications summary:
 ### 5. Execute install.bat
 - Double click to execute the install.bat file, the program will automatically search the serial port and try to download esp8266-uart-wsserver firmware, if it fails, please reset the esp8266 and re-execute the install.bat.
 
-## Links about SunFounder 
+## Links about SunFounder
 - https://sunfounder.com
 - https://docs.sunfounder.com/en/latest/
 
