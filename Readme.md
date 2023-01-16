@@ -41,6 +41,11 @@ SET+START
 ```
 
 `SET+SMD<mode>`: set send mode, 0:send original text; 1:send simplified text
+
+```
+SET+SMD1
+```
+
 `SET+RESET`: reset esp8266
 ```
 SET+RESET
