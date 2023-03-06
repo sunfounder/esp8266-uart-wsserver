@@ -40,12 +40,26 @@ SET+MODE1
 SET+START
 ```
 
-`SET+SMD<mode>`: set send mode, 0:send original text; 1:send simplified text
+`SET+SMD<mode>`: set send mode, 0: send original text; 1: send simplified text; default: 0
 
 ```
 SET+SMD1
 ```
+`SET+NAME<name>`: set device name
 
+```
+SET+NAMEesp01s
+```
+`SET+TYPE<type>`: set device type mode
+
+```
+SET+TYPEesp01s
+```
+`SET+CHECK<check>`: set check string
+
+```
+SET+CHECKSC
+```
 `SET+RESET`: reset esp8266
 ```
 SET+RESET

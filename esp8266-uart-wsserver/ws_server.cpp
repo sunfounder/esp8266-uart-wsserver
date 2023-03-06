@@ -7,8 +7,12 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length
 
 WebSocketsServer ws = WebSocketsServer(8765);
 uint8_t client_num = 0;
-uint8_t WS_SEND_MODE = 0; // 0:send original text; 1:send simplified text
+uint8_t ws_send_mode = 0; // 0:send original text; 1:send simplified text
 
+bool auto_send_check = false;
+String ws_name = "ESP01S";
+String ws_type = "ESP01S";
+String ws_check = "SC";
 
 String intToString(uint8_t* value, size_t length) {
   String buf;
@@ -33,13 +37,31 @@ void WS_Server::loop() {
   ws.loop();
 }
 
-void WS_Server::set_send_mode(uint8_t mode) {
-  WS_SEND_MODE = mode;
-}
 
 void WS_Server::send(String data) {
   ws.sendTXT(client_num, data);
 }
+
+
+void WS_Server::set_name(String name) {
+  ws_name = name;
+  auto_send_check = true;
+}
+
+void WS_Server::set_type(String type) {
+  ws_type = type;
+  auto_send_check = true;
+}
+
+void WS_Server::set_check(String check) {
+  ws_check = check;
+  auto_send_check = true;
+}
+
+void WS_Server::set_send_mode(uint8_t mode) {
+  ws_send_mode = mode;
+}
+
 
 void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length) {
   String out;
@@ -67,6 +89,17 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length
         Serial.println(remoteIp.toString());
       #endif
       Serial.print("[CONNECTED] ");Serial.println(remoteIp.toString());
+      // Send check_info  to client
+      if (auto_send_check) {
+        String check_info = "{\"Name\":\"" + ws_name
+                          + "\",\"Type\":\"" + ws_type
+                          + "\",\"Check\":\"" + ws_check
+                          + "\"}";
+        Serial.println(check_info);
+        ws.sendTXT(client_num, check_info);
+        delay(100);
+        ws.sendTXT(client_num, check_info);
+      }
       break;
     }
     // receive text
@@ -77,16 +110,13 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length
         Serial.println(out);
       #endif
       // ------------- send simplified text -------------
-      if(WS_SEND_MODE == 1) {
+      if(ws_send_mode == 1) {
         DynamicJsonDocument recvBuffer(WS_BUFFER_SIZE);
         deserializeJson(recvBuffer, out);
         String result = "WS+";
         String result_temp = "";
 
-        // if (!recvBuffer["Len"].isNull()) {
-        //   result += recvBuffer["Len"].as<String>();
-        //   result += ";";
-        // }
+        // REGIONS
         for (int i=0; i<REGIONS_LENGTH; i++){
           String region = String(REGIONS[i]);
           String value;
@@ -103,6 +133,8 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length
           if (value != "null") result_temp += value;
           if (i != REGIONS_LENGTH - 1) result_temp += ';';
         }
+
+        // length check
         int len = result_temp.length() + 3 + 3 + 1; // WS+000x;
         if (len > 99) {
           result += String(len);
@@ -116,6 +148,7 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length
         result += ";";
         result += result_temp;
 
+        // sernd
         Serial.println(result);
         break;
       }

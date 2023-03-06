@@ -14,8 +14,12 @@ class WS_Server {
     WS_Server();
     void begin(int port);
     void loop();
-    void set_send_mode(uint8_t mode);
     void send(String data);
+
+    void set_name(String name);
+    void set_type(String type);
+    void set_check(String check);
+    void set_send_mode(uint8_t mode);
 };
 
 

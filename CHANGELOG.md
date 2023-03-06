@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.3.1] - 2023-3-6
+
+### Added
+- Add command: SMD,NAME,TYPE,CHECK
+- Add auto_send_check
+
 ## [1.2.0] - 2023-1-16
 
 ### Added

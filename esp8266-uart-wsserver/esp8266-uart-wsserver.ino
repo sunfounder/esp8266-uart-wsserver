@@ -11,7 +11,7 @@
   Board tools:
     - Generic ESP8266 Module
 
-  Version: 1.2.0
+  Version: 1.3.1
     -- https://github.com/sunfounder/esp8266-uart-wsserver.git
 
   Author: Sunfounder
@@ -24,7 +24,7 @@
 #include "wifi_helper.hpp"
 #include "ws_server.hpp"
 
-#define VERSION "1.2.0"
+#define VERSION "1.3.1"
 
 /* Set the Debug Level
   for production, set "DEBUG_LEVEL" to "CAM_DEBUG_LEVEL_INFO"
@@ -58,7 +58,6 @@ String ssid = "";
 String password = "";
 int port = 0;
 int mode = NONE;
-uint8_t ws_send_mode = 0;
 
 bool isConnected = false;
 String ip = "";
@@ -147,10 +146,21 @@ void handleSet(String cmd) {
     debug("Set mode: ", String(builtin_led_enable));
     Serial.println("[OK]");
   } else if (cmd.substring(0, 3) == "SMD") {
-    ws_send_mode = cmd.substring(3).toInt();
-    ws_server.set_send_mode(ws_send_mode);
-    debug("Set ws_send_mode: ", String(ws_send_mode));
+    ws_server.set_send_mode(cmd.substring(3).toInt());
+    debug("Set ws_send_mode: ", cmd.substring(3));
     Serial.println("[OK]");
+  } else if (cmd.substring(0, 4) == "NAME") {
+    ws_server.set_name(cmd.substring(4));
+    debug("Set name: ", cmd.substring(4));
+    Serial.println("[OK]"); 
+  } else if (cmd.substring(0, 4) == "TYPE") {
+    ws_server.set_type(cmd.substring(4));
+    debug("Set type: ", cmd.substring(4));
+    Serial.println("[OK]"); 
+  } else if (cmd.substring(0, 5) == "CHECK") {
+    ws_server.set_check(cmd.substring(5));
+    debug("Set check: ", cmd.substring(5));
+    Serial.println("[OK]"); 
   } else if (cmd.substring(0, 5) == "RESET") {
     debug("Reset", " ");
     delay(10);
@@ -168,7 +178,7 @@ void handleSet(String cmd) {
       start();
     }
   } else {
-    Serial.println("SET+ Unknown command");
+    Serial.println("[ERROR] SET+ Unknown command");
   }
 }
 
