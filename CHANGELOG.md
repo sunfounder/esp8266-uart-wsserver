@@ -1,5 +1,23 @@
 # Change Log
 
+
+## [2.0.0] - 2023-3-14
+
+### Fixed
+- Fix bug of the serial reading data loss 
+- Fix the bug that the main loop has a serious delay
+- Fix the bug of not executing close() before WiFi reconnection
+- Fix the bug that websocket didn't execute close() before restarting
+
+### Added
+- Add ping pong for websocket communication
+- Add led enable fuctions
+- Add wifi.check_status() for check wifi status
+
+### Optimized
+- Optimize the communication process with APP (Sunfounder Controller)
+
+
 ## [1.3.1] - 2023-3-6
 
 ### Added
