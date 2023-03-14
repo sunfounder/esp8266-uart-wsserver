@@ -83,7 +83,9 @@ void setup() {
 void loop() {
   builtin_led_status_handler();
   if (wifi.is_connected) {
-    wifi.check_status();
+    if (mode == STA) {
+      wifi.check_status();
+    }
     ws_server.loop();
   }
   serial_received_handler();
