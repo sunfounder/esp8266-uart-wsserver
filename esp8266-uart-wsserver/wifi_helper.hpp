@@ -16,6 +16,7 @@ class WiFiHelper {
     String ssid = "";
     String password = "";
     bool is_connected = false;
+    void check_status();
 
   private:
     bool connect_AP();
