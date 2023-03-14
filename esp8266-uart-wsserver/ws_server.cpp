@@ -2,17 +2,28 @@
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 #include "led.hpp"
+#include "Ticker.h"
+
+uint32_t test_time = 0;
 
 void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length);
 
 WebSocketsServer ws = WebSocketsServer(8765);
 uint8_t client_num = 0;
 uint8_t ws_send_mode = 0; // 0:send original text; 1:send simplified text
+bool ws_connected = false;
 
 bool auto_send_check = false;
 String ws_name = "ESP01S";
 String ws_type = "ESP01S";
 String ws_check = "SC";
+
+Ticker pingPongTimer; // timer for checing ping_pong
+
+bool isPingPongOK = true;
+uint32_t lastPingPong = 0;
+uint32_t last_pong_time = 0;
+uint16_t PONG_INTERVAL = 200;
 
 String intToString(uint8_t* value, size_t length) {
   String buf;
@@ -22,12 +33,35 @@ String intToString(uint8_t* value, size_t length) {
   return buf;
 }
 
+void checkPingPong(){
+  
+  if (ws_connected == false) {
+    return;
+  }
+  if (millis() - lastPingPong > TIMEOUT) {
+    lastPingPong = millis();
+    isPingPongOK = false;
+    #ifdef DEBUG
+    Serial.println("[DEBUG] [WS] PingPong timeout");
+    #endif
+    Serial.println("[DISCONNECTED] timeout");
+  }
+}
+
 WS_Server::WS_Server() {}
+
+void WS_Server::close() {
+  ws_connected = false;
+  ws.close();
+  delay(10);
+}
 
 void WS_Server::begin(int port) {
   ws = WebSocketsServer(port);
   ws.begin();
   ws.onEvent(onWebSocketEvent);
+  pingPongTimer.attach_ms(20, checkPingPong);
+
   #ifdef DEBUG
     Serial.println("[DEBUG] WebSocket server started");
   #endif
@@ -37,11 +71,9 @@ void WS_Server::loop() {
   ws.loop();
 }
 
-
 void WS_Server::send(String data) {
   ws.sendTXT(client_num, data);
 }
-
 
 void WS_Server::set_name(String name) {
   ws_name = name;
@@ -62,10 +94,24 @@ void WS_Server::set_send_mode(uint8_t mode) {
   ws_send_mode = mode;
 }
 
-
 void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length) {
   String out;
   client_num = cn;
+
+  // send pong
+  if (ws_connected == true) {
+    uint32_t _time = millis();
+    if (_time - last_pong_time > PONG_INTERVAL) {
+      String msg = "pong "+String(_time);
+      ws.sendTXT(client_num, msg);
+      last_pong_time = millis();
+      #ifdef DEBUG
+      Serial.println("[DEBUG] [WS] send PONG");
+      #endif
+      // Serial.print("[DEBUG] PONG ");Serial.println(_time);
+    }
+  }
+
   #ifdef DEBUG
     Serial.println("[DEBUG] onWebSocketEvent");
   #endif
@@ -78,11 +124,14 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length
       IPAddress remoteIp = ws.remoteIP(client_num);
       LED_STATUS_DISCONNECTED();
       Serial.print("[DISCONNECTED] ");Serial.println(remoteIp.toString());
+      ws_connected = false;
       break;
     }
     // New client has connected
     case WStype_CONNECTED: {
       LED_STATUS_CONNECTED();
+      lastPingPong = millis();
+
       IPAddress remoteIp = ws.remoteIP(client_num);
       #ifdef DEBUG
         Serial.print("[DEBUG] [WS] Connection from ");
@@ -100,6 +149,7 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length
         delay(100);
         ws.sendTXT(client_num, check_info);
       }
+      ws_connected = true;
       break;
     }
     // receive text
@@ -109,6 +159,14 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length
         Serial.print("[DEBUG] [WS] Received text: ");
         Serial.println(out);
       #endif
+
+      // reset ping_pong time
+      lastPingPong = millis();
+      if (strcmp(out.c_str(), "ping") == 0) {
+        Serial.println("[APPSTOP]");
+        return;
+      }
+
       // ------------- send simplified text -------------
       if(ws_send_mode == 1) {
         DynamicJsonDocument recvBuffer(WS_BUFFER_SIZE);
@@ -218,3 +276,4 @@ void onWebSocketEvent(uint8_t cn, WStype_t type, uint8_t* payload, size_t length
     }
   }
 }
+

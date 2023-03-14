@@ -9,10 +9,13 @@
 #define REGIONS_LENGTH 26
 #define WS_BUFFER_SIZE 1024
 
+#define TIMEOUT 2000
+
 class WS_Server {
   public:
     WS_Server();
     void begin(int port);
+    void close();
     void loop();
     void send(String data);
 
