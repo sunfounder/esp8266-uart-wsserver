@@ -14,6 +14,8 @@
 #define FAST_BLINK_DELAY 100
 
 void builtin_led_init();
+void builtin_led_enable();
+void builtin_led_disable();
 void builtin_led_off();
 void builtin_led_on();
 void builtin_led_slow_blink();
